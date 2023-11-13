@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="./css/normalize.css">
+    <link rel="stylesheet" href="./css/style.css">
+		<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,700&amp;subset=cyrillic" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,700&amp;subset=cyrillic" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,700&amp;subset=cyrillic" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css?family=Playfair+Display:400,400i|Tinos:400,400i&amp;subset=cyrillic" rel="stylesheet">
+	</head>
+	<body>
+    <div class="wrapper">
+      <h1>Игровое поле</h1>
+      <div class="field-box"><div class="field"></div></div>
+      <div class="cl"></div>
+    </div>
+
+    <script>
+
+      function isCollidePoint(item1, item2) { 
+        return item1.isIntersection(item2);
+      }
+
+      function itemGroupCollidePoint(item, group, bool1) {
+        return group.array.filter(el => {
+          if (isCollidePoint(item, el, bool1)) {
+            if (bool1) group.delete(el);
+            return true;
+          }
+          return false;
+        });
+      }
+
+      function playerMoveLimits(player, walls) {
+        let wallsCollide = itemGroupCollidePoint(player, walls, false, false);
+
+        if (player.speedX > 0 && wallsCollide.length > 0) {
+          const nearestWall = wallsCollide.reduce((nearest, wall) => {
+            return (wall.posX > nearest.posX) ? wall : nearest;
+          }, wallsCollide[0]);
+          player.posX = Math.min(nearestWall.posX - player.width, player.posX);
+        } else if (player.speedX < 0 && wallsCollide.length > 0) {
+          const nearestWall = wallsCollide.reduce((nearest, wall) => {
+            return (wall.posX < nearest.posX) ? wall : nearest;
+          }, wallsCollide[0]);
+          player.posX = Math.max(nearestWall.posX + nearestWall.width, player.posX);
+        }
+
+        wallsCollide = itemGroupCollidePoint(player, walls, false, false);
+
+        if (player.speedY > 0 && wallsCollide.length > 0) {
+          const nearestWall = wallsCollide.reduce((nearest, wall) => {
+            return (wall.posY > nearest.posY) ? wall : nearest;
+          }, wallsCollide[0]);
+          player.posY = Math.min(nearestWall.posY - player.height, player.posY);
+        } else if (player.speedY < 0 && wallsCollide.length > 0) {
+          const nearestWall = wallsCollide.reduce((nearest, wall) => {
+            return (wall.posY < nearest.posY) ? wall : nearest;
+          }, wallsCollide[0]);
+          player.posY = Math.max(nearestWall.posY + nearestWall.height, player.posY);
+        }
+      }
+
+
+      function enemiesMove(enemies, walls) {
+        enemies.array.forEach(enemy => {
+          if (enemy.direction === 'h') {
+            enemy.posX += enemy.speed;
+          } else if (enemy.direction === 'v') {
+            enemy.posY += enemy.speed;
+          }
+
+          if (itemGroupCollidePoint(enemy, walls, false).length) {
+            enemy.speed = -enemy.speed;
+          } 
+        });
+      }
+
+      class Group {
+        constructor () {
+          this.array = []
+        }
+
+        append(el) {
+          this.array.push(el)
+        }
+
+        delete(el) {
+          this.array = this.array.filter((e) => e.id !== el.id)
+        }
+
+        draw(field) {
+          this.array.forEach((el) => {
+            el.draw(field)
+          })
+        }
+
+        drop() {
+          this.array.forEach((item) => {
+            item.drop()
+          })
+        }
+
+        update(field) {
+          this.drop()
+          this.draw(field)
+        }
+      }
+
+
+      let nextId = BigInt(1);
+
+      class Item {
+        constructor(name, posX, posY, width, height, className) {
+          this.id = nextId++
+          this.name = name
+          this.posX = posX
+          this.posY = posY
+          this.width = width
+          this.height = height
+          this.className = className
+        }
+
+        isIntersection(other) {
+          if (other instanceof Item) {
+            return (
+              this.posX < other.posX + other.width &&
+              this.posX + this.width > other.posX &&
+              this.posY < other.posY + other.height &&
+              this.posY + this.height > other.posY
+            )
+          } else if (other instanceof Heat) {
+            const distanceX = Math.abs(this.posX - other.posX - other.radius / 2);
+            const distanceY = Math.abs(this.posY - other.posY - other.radius / 2);
+
+            if (distanceX > (this.width / 2 + other.radius / 2) || distanceY > (this.height / 2 + other.radius / 2)) {
+              return false;
+            }
+
+            if (distanceX <= (this.width / 2) || distanceY <= (this.height / 2)) {
+              return true;
+            }
+
+            const cornerDistance = Math.pow(distanceX - this.width / 2, 2) + Math.pow(distanceY - this.height / 2, 2);
+            return cornerDistance <= Math.pow(other.radius / 2, 2);
+          }
+        }
+
+        toHtml() {
+          const item = document.createElement('div')
+          item.style.backgroundSize = `${this.height}px ${this.width}px`
+          item.style.height = `${this.height}px`
+          item.style.width = `${this.width}px`
+          item.style.top = `${this.posY}px`
+          item.style.left = `${this.posX}px`
+          item.classList.add(this.className)
+
+          this.item = item
+          return item
+        }
+
+        draw(field) {
+          field.append(this.toHtml())
+        }
+
+        drop() {
+          this.item.remove()
+        }
+
+        update(field) {
+          this.drop()
+          this.draw(field)
+        }
+      }
+
+      class HealthPotion extends Item {
+        constructor(posX, posY, width, height, className, value) {
+          super('Зелье здоровья', posX, posY, width, height, className)
+          this.value = value
+        }
+
+        use(hero) {
+          if (hero.health + this.value > hero.maxHealth)
+            hero.health = hero.maxHealth
+          else
+            hero.health += this.value
+        }
+      }
+
+      class Sword extends Item {
+        constructor(posX, posY, width, height, className, value) {
+          super('Меч', posX, posY, width, height, className)
+          this.value = value
+        }
+
+        use(hero) {
+          hero.power += this.value
+        }
+      }
+
+
+      class Heat {
+        constructor(posX, posY, radius) {
+          this.posX = posX;
+          this.posY = posY;
+          this.radius = radius;
+          this.item = this.createHtmlElement();
+        }
+
+        isIntersection(rectangle) {
+          const closestX = Math.max(rectangle.posX, Math.min(this.posX, rectangle.posX + rectangle.width));
+          const closestY = Math.max(rectangle.posY, Math.min(this.posY, rectangle.posY + rectangle.height));
+
+          const distanceX = closestX - this.posX - this.radius / 2;
+          const distanceY = closestY - this.posY - this.radius / 2;
+
+          return Math.sqrt(Math.pow(distanceX, 2) + Math.pow(distanceY, 2)) <= this.radius / 2;
+        }
+
+        createHtmlElement() {
+          const heat = document.createElement('div');
+          heat.classList.add('heat');
+          heat.style.left = `${this.posX}px`;
+          heat.style.top = `${this.posY}px`;
+          heat.style.width = `${this.radius}px`;
+          heat.style.height = `${this.radius}px`;
+
+          return heat;
+        }
+
+        draw(field) {
+          field.append(this.item);
+        }
+
+        drop() {
+          this.item.remove();
+        }
+      }
+
+      class Character extends Item {
+        constructor(name, posX, posY, width, height, className, power, health, speed) {
+          super(name, posX, posY, width, height, className);
+          this.power = power;
+          this.health = health;
+          this.speed = speed;
+        }
+
+        isAlive() {
+          return this.health > 0;
+        }
+      }
+
+      class Player extends Character {
+        constructor(name, posX, posY, width, height, className, power = 5, health = 100, speed = 5) {
+          super(name, posX, posY, width, height, className, power, health, speed);
+          this.healthMax = health;
+          this.speedX = 0;
+          this.speedY = 0;
+          this.heat = null;
+          this.heats = new Group();
+        }
+
+        createHtmlElement() {
+          const item = document.createElement('div');
+          item.style.backgroundSize = `${this.height}px ${this.width}px`;
+          item.style.height = `${this.height}px`;
+          item.style.width = `${this.width}px`;
+          item.style.top = `${this.posY}px`;
+          item.style.left = `${this.posX}px`;
+          item.classList.add(this.className);
+
+          const healthIndicator = document.createElement('span');
+          healthIndicator.classList.add('healthIndicator');
+
+          const el = document.createElement('span');
+          healthIndicator.append(el);
+          el.style.width = `${this.health * 100 / this.healthMax}%`;
+
+          healthIndicator.style.height = '3px';
+          healthIndicator.style.width = `${this.width}px`;
+
+          item.append(healthIndicator);
+
+          this.item = item;
+          return item;
+        }
+
+        attack() {
+          const heat = new Heat(this.posX - this.width, this.posY - this.height, 3 * this.width);
+          this.heats.append(heat);
+          setTimeout(this.delete.bind(this), 500);
+        }
+
+        delete() {
+          this.heats.array.shift();
+        }
+
+        move() {
+          this.posX += this.speedX;
+          this.posY += this.speedY;
+        }
+
+        draw(field) {
+          field.append(this.createHtmlElement());
+          if (this.heats.array.length) {
+            this.heats.draw(field);
+          }
+        }
+
+        drop() {
+          if (this.heats.array.length) {
+            this.heats.drop();
+          }
+          this.item.remove();
+        }
+
+        update(field) {
+          this.drop();
+          this.draw(field);
+        }
+
+        control() {
+          document.addEventListener('keydown', (event) => {
+            if (event.code === 'KeyW') {
+              this.speedY = -this.speed;
+              this.speedX = 0;
+            } else if (event.code === 'KeyA') {
+              this.speedX = -this.speed;
+              this.speedY = 0;
+            } else if (event.code === 'KeyS') {
+              this.speedY = this.speed;
+              this.speedX = 0;
+            } else if (event.code === 'KeyD') {
+              this.speedX = this.speed;
+              this.speedY = 0;
+            } else if (event.code === 'Space') {
+              this.attack();
+            }
+          });
+
+          document.addEventListener('keyup', (event) => {
+            if (event.code === 'KeyW' || event.code === 'KeyS') {
+              this.speedY = 0;
+            } else if (event.code === 'KeyA' || event.code === 'KeyD') {
+              this.speedX = 0;
+            }
+          });
+        }
+      }
+
+      class Enemy extends Character {
+        constructor(posX, posY, width, height, className, direction, power = 2, health = 50, speed = 3) {
+          if (direction !== 'h' && direction !== 'v') {
+            throw new Error(`Неверное указание направление персонажа: ${direction}. Доступны: 'h', 'v'.`);
+          }
+          super('enemy', posX, posY, width, height, className, power, health, speed);
+          this.direction = direction;
+        }
+
+        attack(hero) {
+          hero.health -= this.power;
+        }
+      }
+
+
+
+      const DIRECTION_HORIZONTAL = 'h';
+      const DIRECTION_VERTICAL = 'v';
+
+      class Map {
+        constructor(width = 40, height = 24) {
+          this.map = [];
+          this.field = null;
+          this.blockWidthPx = 0;
+          this.blockHeightPx = 0;
+          this.height = height;
+          this.width = width;
+        }
+
+        init() {
+          this.generateMap();
+          this.drawMap();
+
+          return [this.blockWidthPx, this.blockHeightPx];
+        }
+
+        generateRooms() {
+          const count = Math.round(Math.random() * 5 + 5);
+
+          for (let i = 0; i < count; i++) {
+            let h = Math.round(Math.random() * 5 + 3);
+            let l = Math.round(Math.random() * 5 + 3);
+
+            let start = [Math.round(Math.random() * (this.height - 3 - h) + 1), Math.round(Math.random() * (this.width - 3 - l) + 1)];
+
+            let flag = 1;
+            for (let j = start[0]; j < start[0] + h; j++) {
+              for (let k = start[1]; k < start[1] + l; k++) {
+                if (this.map[j][k] > 0) {
+                  flag = 0;
+                  break;
+                }
+              }
+
+              if (!flag) {
+                break;
+              }
+            }
+
+            if (!flag) {
+              i--;
+              continue;
+            }
+
+            for (let j = start[0]; j < start[0] + h; j++) {
+              for (let k = start[1]; k < start[1] + l; k++) {
+                this.map[j][k] = 1;
+              }
+            }
+          }
+        }
+
+        generatePassages(direction = DIRECTION_HORIZONTAL) {
+          const count = Math.round(Math.random() * 2 + 3);
+
+          if (direction === DIRECTION_HORIZONTAL) {
+            for (let k = 0; k < count; k++) {
+              const pos = Math.round(Math.random() * (this.height - 3) + 1);
+              if (this.map[pos].every((el) => el === 1)) {
+                k--;
+                continue;
+              }
+
+              for (let i = 1; i < this.width - 1; i++) {
+                this.map[pos][i] = 1;
+              }
+            }
+          } else if (direction === DIRECTION_VERTICAL) {
+            for (let k = 0; k < count; k++) {
+              const pos = Math.round(Math.random() * (this.width - 3) + 1);
+              if (this.map.every((el) => el[pos] === 1)) {
+                k--;
+                continue;
+              }
+
+              for (let i = 1; i < this.height - 1; i++) {
+                this.map[i][pos] = 1;
+              }
+            }
+          } else {
+            throw new Error(`Invalid direction for passages generation: ${direction}. Available directions: ${DIRECTION_HORIZONTAL}, ${DIRECTION_VERTICAL}.`);
+          }
+        }
+
+        generateMap() {
+          for (let i = 0; i < this.height; i++) {
+            this.map.push([]);
+            for (let j = 0; j < this.width; j++) {
+              this.map[i].push(0);
+            }
+          }
+
+          this.generateRooms();
+          this.generatePassages();
+          this.generatePassages(DIRECTION_VERTICAL);
+        }
+
+        generateBack() {
+          const block = document.createElement('span');
+          block.style.backgroundSize = `${this.blockHeightPx}px ${this.blockWidthPx}px`;
+          block.style.height = `${this.blockHeightPx}px`;
+          block.style.width = `${this.blockWidthPx}px`;
+          block.classList.add('tile');
+          return block;
+        }
+
+        drawMap() {
+          const field = document.querySelector('.field');
+
+          this.field = field;
+
+          const heightPx = field.offsetHeight;
+          const widthPx = field.offsetWidth;
+
+          this.blockHeightPx = heightPx / this.height;
+          this.blockWidthPx = widthPx / this.width;
+
+          this.map.forEach((row) => {
+            row.forEach((el) => {
+              field.append(this.generateBack());
+            });
+          });
+        }
+
+        update() {
+          this.field.innerHTML = '';
+          this.map.forEach((row) => {
+            row.forEach((el) => {
+              this.field.append(this.generateBack());
+            });
+          });
+        }
+      }
+
+
+      const swordCount = 2
+      const healtPotionCount = 10
+      const enemyCount = 10
+      let currentEnemy = 0
+
+      class Game {
+        constructor() {
+          const map = new Map();
+          const [blockWidth, blockHeight] = map.init();
+          this.map = map;
+
+          this.blockWidth = blockWidth;
+          this.blockHeight = blockHeight;
+
+          this.enemies = new Group();
+          this.swords = new Group();
+          this.healthPotions = new Group();
+          this.walls = new Group();
+          this.uses = new Group();
+        }
+
+        init() {
+          alert('Чтобы выиграть убей всех врагов!');
+          this.generateEnvironment();
+
+          const field = document.querySelector('.field');
+          this.field = field;
+
+          this.draw(field);
+
+          this.player.control();
+        }
+
+        gameLoop(field) {}
+
+        update() {
+          this.map.update();
+          this.enemies.update(this.field);
+          this.uses.update(this.field);
+          this.walls.update(this.field);
+          this.player.update(this.field);
+        }
+
+        draw(field) {
+          this.enemies.draw(field);
+          this.swords.draw(field);
+          this.healthPotions.draw(field);
+          this.walls.draw(field);
+          this.player.draw(field);
+        }
+
+        generateEnvironment() {
+          this.generateEnvironmentMap();
+          const map = this.map.map;
+
+          map.forEach((row, i) => {
+            row.forEach((el, j) => {
+              const posX = j * this.blockWidth;
+              const posY = i * this.blockHeight;
+              const coef = 1.35;
+
+              if (el === 's') {
+                const sword = new Sword(posX, posY, this.blockWidth / coef, this.blockHeight / coef, 'tileSW', 5);
+                this.swords.append(sword);
+                this.uses.append(sword);
+              } else if (el === 'hp') {
+                const hp = new HealthPotion(posX, posY, this.blockWidth / coef, this.blockHeight / coef, 'tileHP', 5);
+                this.healthPotions.append(hp);
+                this.uses.append(hp);
+              } else if (el === 'e') {
+                const direction = (currentEnemy % 2 === 0) ? 'h' : 'v';
+                const enemy = new Enemy(posX, posY, this.blockWidth / coef, this.blockHeight / coef, 'tileE', direction);
+                currentEnemy++;
+                this.enemies.append(enemy);
+              } else if (el === 0) {
+                const wall = new Item('wall', posX, posY, this.blockWidth, this.blockHeight, 'tileW');
+                this.walls.append(wall);
+              } else if (el === 'p') {
+                this.player = new Player('Andrey', posX, posY, this.blockWidth / coef, this.blockHeight / coef, 'tileP');
+              }
+            });
+          });
+        }
+
+        generateEnvironmentMap() {
+          const map = this.map.map;
+
+          for (let i = 0; i < swordCount + healtPotionCount + enemyCount + 1; i++) {
+            let pos = Math.round(Math.random() * (map.length - 1));
+
+            if (!map[pos].includes(1)) {
+              i--;
+              continue;
+            }
+
+            let j = Math.round(Math.random() * (map[pos].length - 1));
+            while (map[pos][j] !== 1) {
+              j = Math.round(Math.random() * (map[pos].length - 1));
+            }
+
+            if (i < swordCount) {
+              map[pos][j] = 's';
+            } else if (i < swordCount + healtPotionCount) {
+              map[pos][j] = 'hp';
+            } else if (i < swordCount + healtPotionCount + enemyCount) {
+              map[pos][j] = 'e';
+            } else {
+              map[pos][j] = 'p';
+            }
+          }
+        }
+      }
+
+
+      function handleCollisions() {
+      let enemies = itemGroupCollidePoint(game.player, game.enemies, false);
+
+      if (enemies.length) {
+        enemies.forEach((enemy) => {
+          enemy.attack(game.player);
+        });
+
+        if (!game.player.isAlive()) {
+          gameOver('You lose');
+          return;
+        }
+      }
+
+      if (!game.enemies.array.length) {
+        gameOver('You win');
+        return;
+      }
+
+      let uses = itemGroupCollidePoint(game.player, game.uses, false);
+
+      if (uses.length) {
+        uses.forEach((use) => {
+          use.use(game.player);
+          game.uses.delete(use);
+        });
+      }
+
+      game.player.heats.array.forEach((heat) => {
+        let enemies = itemGroupCollidePoint(heat, game.enemies, false);
+
+        if (enemies.length) {
+          enemies.forEach((enemy) => {
+            enemy.health -= game.player.power;
+
+            if (!enemy.isAlive()) {
+              game.enemies.delete(enemy);
+            }
+          });
+        }
+      });
+    }
+
+    function gameOver(message) {
+      alert(message);
+    }
+
+    function gameLoop() {
+      game.player.move();
+      enemiesMove(game.enemies, game.walls);
+      playerMoveLimits(game.player, game.walls);
+      handleCollisions();
+
+      game.enemies.update(game.field);
+      game.update();
+
+      setTimeout(() => requestAnimationFrame(gameLoop), 10);
+    }
+
+    const game = new Game();
+    game.init();
+
+    gameLoop();
+
+    </script>
+	</body>
+</html>
