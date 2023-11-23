@@ -1,6 +1,15 @@
 const DIRECTION_HORIZONTAL = 'h';
 const DIRECTION_VERTICAL = 'v';
 
+function createRangeArray(a, b) {
+  return Array.from({ length: b - a + 1 }, (_, index) => index + a);
+}
+
+function getRandomElement(array) {
+  const randomIndex = Math.floor(Math.random() * array.length);
+  return array[randomIndex];
+}
+
 export class Map {
   constructor(width = 40, height = 24) {
     this.map = [];
@@ -9,6 +18,8 @@ export class Map {
     this.blockHeightPx = 0;
     this.height = height;
     this.width = width;
+    this.roomsVIndexes = []
+    this.roomsHIndexes = []
   }
 
   init() {
@@ -46,12 +57,23 @@ export class Map {
         continue;
       }
 
+      this.roomsVIndexes = this.roomsVIndexes.concat(createRangeArray(start[0], start[0] + h - 1))
+      this.roomsHIndexes = this.roomsHIndexes.concat(createRangeArray(start[1], start[1] + l - 1))
+      console.log('-------')
+      console.log(this.roomsHIndexes)
+      console.log(this.roomsVIndexes)
+      console.log('-------')
       for (let j = start[0]; j < start[0] + h; j++) {
         for (let k = start[1]; k < start[1] + l; k++) {
           this.map[j][k] = 1;
         }
       }
     }
+
+    this.roomsHIndexes = [...new Set(this.roomsHIndexes)]
+    this.roomsVIndexes = [...new Set(this.roomsVIndexes)]
+    console.log(this.roomsHIndexes)
+    console.log(this.roomsVIndexes)
   }
 
   generatePassages(direction = DIRECTION_HORIZONTAL) {
@@ -59,7 +81,12 @@ export class Map {
 
     if (direction === DIRECTION_HORIZONTAL) {
       for (let k = 0; k < count; k++) {
-        const pos = Math.round(Math.random() * (this.height - 3) + 1);
+        // const pos = Math.round(Math.random() * (this.height - 3) + 1);
+        const pos = getRandomElement(this.roomsVIndexes)
+
+        const delIndex = this.roomsVIndexes.indexOf(pos)
+        this.roomsVIndexes.splice(delIndex - 2, 4)
+
         if (this.map[pos].every((el) => el === 1)) {
           k--;
           continue;
@@ -71,7 +98,12 @@ export class Map {
       }
     } else if (direction === DIRECTION_VERTICAL) {
       for (let k = 0; k < count; k++) {
-        const pos = Math.round(Math.random() * (this.width - 3) + 1);
+        // const pos = Math.round(Math.random() * (this.width - 3) + 1);
+        const pos = getRandomElement(this.roomsHIndexes)
+        
+        const delIndex = this.roomsHIndexes.indexOf(pos)
+        this.roomsHIndexes.splice(delIndex - 2, 4)
+
         if (this.map.every((el) => el[pos] === 1)) {
           k--;
           continue;
