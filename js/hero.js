@@ -3,12 +3,33 @@ import { Group } from "./group.js"
 
 
 
-export class Heat {
-  constructor(posX, posY, radius) {
-    this.posX = posX;
-    this.posY = posY;
-    this.radius = radius;
-    this.item = this.createHtmlElement();
+export class Heat extends Item {
+  constructor(name, posX, posY, width, height, className, power) {
+    super(name, posX, posY, width, height, className);
+    this.power = power
+  }
+
+  draw(field) {
+    field.append(this.item);
+  }
+
+  drop() {
+    this.item.remove();
+  }
+
+  heat(other) {
+    other.health -= this.power;
+  }
+}
+
+export class Standart extends Heat {
+  constructor(posX, posY, width, height, power, name='standart') {
+    super(name, posX, posY, width, height, '', power)
+    this.item = this.toHtml();
+    this.posX = posX - width;
+    this.posY = posY - height;
+    this.radius = 3 * width;
+    this.item = this.toHtml();
   }
 
   isIntersection(rectangle) {
@@ -21,7 +42,7 @@ export class Heat {
     return Math.sqrt(Math.pow(distanceX, 2) + Math.pow(distanceY, 2)) <= this.radius / 2;
   }
 
-  createHtmlElement() {
+  toHtml() {
     const heat = document.createElement('div');
     heat.classList.add('heat');
     heat.style.left = `${this.posX}px`;
@@ -31,13 +52,35 @@ export class Heat {
 
     return heat;
   }
+}
 
-  draw(field) {
-    field.append(this.item);
+export class Arrow extends Heat {
+  constructor(posX, posY, width, height, power, direction, speed, name='arrow') {
+    super(name, posX, posY, width, height, 'tileAR', power);
+    this.item = this.toHtml();
+    this.direction = direction;
+    this.speed = speed;
   }
 
-  drop() {
-    this.item.remove();
+  use(hero) {
+    hero.weapons.push('bow')
+  }
+
+  toHtml() {
+    const item = document.createElement('div')
+    item.style.backgroundSize = `${this.height}px ${this.width}px`
+    item.style.height = `${this.height}px`
+    item.style.width = `${this.width}px`
+    item.style.top = `${this.posY}px`
+    item.style.left = `${this.posX}px`
+    item.classList.add(this.className)
+
+    this.item = item
+    return item
+  }
+
+  draw(field) {
+    field.append(this.toHtml());
   }
 }
 
@@ -52,19 +95,8 @@ export class Character extends Item {
   isAlive() {
     return this.health > 0;
   }
-}
 
-export class Player extends Character {
-  constructor(name, posX, posY, width, height, className, power = 5, health = 100, speed = 5) {
-    super(name, posX, posY, width, height, className, power, health, speed);
-    this.healthMax = health;
-    this.speedX = 0;
-    this.speedY = 0;
-    this.heat = null;
-    this.heats = new Group();
-  }
-
-  createHtmlElement() {
+  toHtml() {
     const item = document.createElement('div');
     item.style.backgroundSize = `${this.height}px ${this.width}px`;
     item.style.height = `${this.height}px`;
@@ -88,11 +120,30 @@ export class Player extends Character {
     this.item = item;
     return item;
   }
+}
+
+export class Player extends Character {
+  constructor(name, posX, posY, width, height, className, power = 5, health = 100, speed = 5) {
+    super(name, posX, posY, width, height, className, power, health, speed);
+    this.healthMax = health;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.heat = null;
+    this.heats = new Group();
+    this.weapons = ['standart'];
+    this.currentWeapon = 0;
+    this.direction = '';
+  }
 
   attack() {
-    const heat = new Heat(this.posX - this.width, this.posY - this.height, 3 * this.width);
-    this.heats.append(heat);
-    setTimeout(this.delete.bind(this), 500);
+    if (this.currentWeapon === 0) {
+      const heat = new Standart(this.posX, this.posY, this.width, this.height, this.power);
+      this.heats.append(heat);
+      setTimeout(this.delete.bind(this), 500);
+    } if (this.currentWeapon == 1) {
+      const arrow = new Arrow(this.posX, this.posY, this.width, this.height, this.power + 3, this.direction, 8)
+      this.heats.append(arrow);
+    }
   }
 
   delete() {
@@ -105,16 +156,13 @@ export class Player extends Character {
   }
 
   draw(field) {
-    field.append(this.createHtmlElement());
+    field.append(this.toHtml());
     if (this.heats.array.length) {
       this.heats.draw(field);
     }
   }
 
   drop() {
-    if (this.heats.array.length) {
-      this.heats.drop();
-    }
     this.item.remove();
   }
 
@@ -128,17 +176,24 @@ export class Player extends Character {
       if (event.code === 'KeyW') {
         this.speedY = -this.speed;
         this.speedX = 0;
+        this.direction = 'u';
       } else if (event.code === 'KeyA') {
         this.speedX = -this.speed;
         this.speedY = 0;
+        this.direction = 'l';
       } else if (event.code === 'KeyS') {
         this.speedY = this.speed;
         this.speedX = 0;
+        this.direction = 'd';
       } else if (event.code === 'KeyD') {
         this.speedX = this.speed;
         this.speedY = 0;
+        this.direction = 'r';
       } else if (event.code === 'Space') {
         this.attack();
+      } else if (event.code === 'KeyC') {
+        if (this.weapons.length > 1) 
+          this.currentWeapon = this.currentWeapon === 0 ? 1 : 0
       }
     });
 
@@ -159,9 +214,34 @@ export class Enemy extends Character {
     }
     super('enemy', posX, posY, width, height, className, power, health, speed);
     this.direction = direction;
+    this.healthMax = health;
   }
 
   attack(hero) {
     hero.health -= this.power;
+  }
+}
+
+
+export class Friend extends Character {
+  constructor(posX, posY, width, height, className, enemies, power = 5, health = 75, speed = 5) {
+    super('friend', posX, posY, width, height, className, power, health, speed);
+    this.healthMax = health;
+    this.enemies = enemies;
+  }
+
+  attack(enemy) {
+    enemy.health -= this.power;
+  }
+
+  getClosest() {
+    let distances = [];
+    this.enemies.array.forEach((enemy) => {
+      let distance = Math.round(Math.sqrt(Math.pow(this.posX - enemy.posX, 2) + Math.pow(this.posY - enemy.posY, 2)));
+      distances.push(distance)
+    });
+    const argmin = distances.indexOf(Math.min(...distances));
+    
+    return this.enemies.array[argmin];
   }
 }

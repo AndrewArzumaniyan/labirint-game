@@ -21,10 +21,15 @@ h1 { font-family: "Playfair Display"; font-size: 30px; padding: 0; margin: 0px; 
 .field { position: relative; width: 1024px; height: 640px;}
 .field .tile { width: 50px; height: 50px; background-size: 100%; background-image: url(../images/tile-.png); z-index: 5; }
 .field .tileW { position: absolute; background-image: url(../images/tile-W.png); z-index: 5;}
-.field .tileE { position: absolute; background-image: url(../images/tile-E.png); z-index: 10; }
-.field .tileP { position: absolute; background-image: url(../images/tile-P.png); z-index: 10; }
+.field .tileE { position: absolute; background-image: url(../images/tile-E.png); z-index: 11; }
+.field .tileP { position: absolute; background-image: url(../images/tile-P.png); z-index: 11; }
 .field .tileHP { position: absolute; background-image: url(../images/tile-HP.png); z-index: 9; }
 .field .tileSW { position: absolute; background-image: url(../images/tile-SW.png); z-index: 9; }
+.field .tileTR { position: absolute; background-image: url(../images/tile-TR.png); z-index: 9; }
+.field .tileHF { position: absolute; background-image: url(../images/tile-HF.png); z-index: 9; }
+.field .tileBOW { position: absolute; background-image: url(../images/tile-BOW.png); z-index: 9; }
+.field .tileAR { position: absolute; background-image: url(../images/tile-AR.png); z-index: 9; }
+.field .tileFR { position: absolute; background-image: url(../images/tile-FR.png); z-index: 9; }
 .field .tile .health { background-color: #ff0000; z-index: 11; position: absolute; left: 0px; top: 0px; height: 3px; }
 .field .tileP .health { background-color: #00ff00; z-index: 11; position: absolute; left: 0px; top: 0px; height: 3px; }
 .inventory-box { border: 2px solid #d0d0d0; float: left; }
@@ -38,7 +43,7 @@ h1 { font-family: "Playfair Display"; font-size: 30px; padding: 0; margin: 0px; 
 
 .heat {
   position: absolute;
-  z-index: 15;
+  z-index: 10;
   display: inline-block;
   border-radius: 50%;
   background-color: rgba(255, 0, 0, 0.6);

@@ -87,3 +87,36 @@ export class Sword extends Item {
     hero.power += this.value
   }
 }
+
+
+export class Trap extends Item {
+  constructor(posX, posY, width, height, className, value) {
+    super('Trap', posX, posY, width, height, className)
+    this.value = value
+  }
+
+  hit(other) {
+    other.health -= this.value
+  }
+}
+
+export class HealthFountain extends Item {
+  constructor(posX, posY, width, height, className, value) {
+    super('Health fountain', posX, posY, width, height, className)
+    this.value = value
+  }
+
+  use(hero) {
+    hero.health += this.value
+  }
+}
+
+export class Bow extends Item {
+  constructor(posX, posY, width, height, className) {
+    super('Health fountain', posX, posY, width, height, className)
+  }
+
+  use(hero) {
+    hero.weapons.push('bow')
+  }
+}

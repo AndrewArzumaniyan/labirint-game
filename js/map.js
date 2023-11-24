@@ -59,10 +59,7 @@ export class Map {
 
       this.roomsVIndexes = this.roomsVIndexes.concat(createRangeArray(start[0], start[0] + h - 1))
       this.roomsHIndexes = this.roomsHIndexes.concat(createRangeArray(start[1], start[1] + l - 1))
-      console.log('-------')
-      console.log(this.roomsHIndexes)
-      console.log(this.roomsVIndexes)
-      console.log('-------')
+
       for (let j = start[0]; j < start[0] + h; j++) {
         for (let k = start[1]; k < start[1] + l; k++) {
           this.map[j][k] = 1;
@@ -72,8 +69,6 @@ export class Map {
 
     this.roomsHIndexes = [...new Set(this.roomsHIndexes)]
     this.roomsVIndexes = [...new Set(this.roomsVIndexes)]
-    console.log(this.roomsHIndexes)
-    console.log(this.roomsVIndexes)
   }
 
   generatePassages(direction = DIRECTION_HORIZONTAL) {
